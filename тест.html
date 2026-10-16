@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кредитный калькулятор</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --bg: #f8fafc;
+            --surface: #ffffff;
+            --border: #e2e8f0;
+            --text: #1e293b;
+            --text-muted: #64748b;
+        }
+        body {
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            max-width: 960px;
+            margin: 0 auto;
+            padding: 12px 16px;
+        }
+        h1 {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 24px;
+        }
+        .card {
+            background: var(--surface);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin-bottom: 24px;
+            border: 1px solid var(--border);
+        }
+        .section-title {
+            font-weight: 600;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+        .form-group { margin-bottom: 14px; }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-weight: 500;
+            color: var(--text);
+        }
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        button:hover { background-color: var(--primary-hover); }
+        table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.92rem; }
+        th, td { border: 1px solid var(--border); padding: 10px; text-align: left; }
+        th { background-color: #f1f5f9; }
+        .total-row { font-weight: bold; background-color: #eff6ff; }
+        .note { margin-top: 20px; font-size: 0.85rem; color: var(--text-muted); line-height: 1.5; }
+        .add-btn { margin-top: 12px; text-align: left; }
+        @media (min-width: 768px) {
+            .flex-row { display: flex; gap: 12px; flex-wrap: wrap; }
+            .col-1 { flex: 1; min-width: 0; }
+            .col-2 { flex: 2; min-width: 0; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Кредитный калькулятор</h1>
+
+    <div class="card">
+        <h3 class="section-title">Основные параметры кредита</h3>
+        <div class="form-group">
+            <label for="principal">Сумма кредита, руб.</label>
+            <input type="number" id="principal" step="0.01" placeholder="Например, 200000">
+        </div>
+        <div class="form-group">
+            <label for="rate">Годовая ставка, %</label>
+            <input type="number" id="rate" step="0.01" placeholder="Например, 20">
+        </div>
+        <div class="form-group">
+            <label for="months">Срок кредита, месяцев</label>
+            <input type="number" id="months" min="1" placeholder="Например, 12">
+        </div>
+        <div class="form-group">
+            <label for="startDate">Дата выдачи кредита</label>
+            <input type="date" id="startDate">
+        </div>
+    </div>
+
+    <div class="card">
+        <h3 class="section-title">Досрочные погашения</h3>
+        <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">
+            Добавьте одно или несколько досрочных погашений. Дата должна быть в пределах срока кредита.
+        </p>
+        <div id="prepaymentsContainer"></div>
+        <button class="add-btn" onclick="addPrepayment()">+ Добавить досрочное погашение</button>
+    </div>
+
+    <button onclick="calculate()">Рассчитать</button>
+
+    <div id="results" style="display:none; margin-top:24px;">
+        <div class="card">
+            <h3 class="section-title">Итоги</h3>
+            <table>
+                <thead><tr><th>Параметр</th><th>Значение</th></tr></thead>
+                <tbody id="summaryBody"></tbody>
+            </table>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+            <h3 class="section-title">График платежей</h3>
+            <div style="overflow-x:auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>№</th>
+                            <th>Дата платежа</th>
+                            <th>Аннуитет</th>
+                            <th>Проценты</th>
+                            <th>Основной долг</th>
+                            <th>Комиссия</th>
+                            <th>Итого</th>
+                            <th>Остаток</th>
+                            <th>Досрочно</th>
+                            <th>Тип</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scheduleBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <p class="note">
+        <strong>Проценты:</strong> аннуитетный платёж, проценты на остаток долга.<br>
+        <strong>Комиссия:</strong> помесячно по формуле (P × 0,01) × (дней кредита в месяце / дней в месяце).<br>
+        <strong>Досрочное погашение:</strong> «Уменьшить срок» — платёж тот же, срок короче; «Уменьшить платёж» — срок тот же, платёж пересчитывается.
+    </p>
+
+    <script>
+        let prepaymentCount = 0;
+
+        function addPrepayment() {
+            const container = document.getElementById('prepaymentsContainer');
+            const id = 'prepay-' + prepaymentCount++;
+            const div = document.createElement('div');
+            div.style.marginBottom = '12px';
+            div.className = 'flex-row';
+            div.innerHTML = `
+                <div class="col-1"><label>Дата</label><input type="date" id="${id}-date"></div>
+                <div class="col-1"><label>Сумма, руб.</label><input type="number" id="${id}-amount" step="0.01" placeholder="Сумма"></div>
+                <div class="col-2"><label>Тип перерасчёта</label><select id="${id}-type"><option value="term">Уменьшить срок</option><option value="payment">Уменьшить платёж</option></select></div>
+            `;
+            container.appendChild(div);
+        }
+
+        addPrepayment(); // одна строка по умолчанию
+
+        function getDaysInMonth(year, month) {
+            return new Date(year, month + 1, 0).getDate();
+        }
+
+        function formatMoney(value) {
+            return value.toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₽';
+        }
+
+        function calculate() {
+            const P = parseFloat(document.getElementById('principal').value);
+            const rAnnual = parseFloat(document.getElementById('rate').value) / 100;
+            const nMonths = parseInt(document.getElementById('months').value, 10);
+            const startDate = new Date(document.getElementById('startDate').value);
+
+            if (isNaN(P) || isNaN(rAnnual) || isNaN(nMonths) || isNaN(startDate.getTime())) {
+                alert('Проверьте корректность введённых данных (все поля должны быть заполнены).');
+                return;
+            }
+
+            const i = rAnnual / 12;
+            const A = P * (i * Math.pow(1 + i, nMonths)) / (Math.pow(1 + i, nMonths) - 1);
+
+            const prepayments = [];
+            document.querySelectorAll('[id^="prepay-"][id$="-date"]').forEach(el => {
+                const prefix = el.id.replace('-date', '');
+                const date = new Date(el.value);
+                const amount = parseFloat(document.getElementById(prefix + '-amount').value);
+                const type = document.getElementById(prefix + '-type').value;
+                if (!isNaN(amount) && amount > 0 && !isNaN(date.getTime())) {
+                    prepayments.push({ date, amount, type });
+                }
+            });
+            prepayments.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+            let balance = P;
+            let currentDate = new Date(startDate.getTime());
+            let paymentNum = 1;
+            let prepayIndex = 0;
+            const schedule = [];
+
+            while (balance > 0.001 && paymentNum <= nMonths * 2) {
+                const payDate = new Date(currentDate.getTime());
+                payDate.setDate(1);
+
+                const daysInCurrMonth = getDaysInMonth(payDate.getFullYear(), payDate.getMonth());
+                const prevDate = new Date(payDate.getTime());
+                prevDate.setMonth(prevDate.getMonth() - 1);
+                const daysInPrevMonth = getDaysInMonth(prevDate.getFullYear(), prevDate.getMonth());
+
+                let daysAccrued;
+                if (paymentNum === 1) {
+                    const firstEnd = new Date(payDate.getTime());
+                    firstEnd.setMonth(firstEnd.getMonth() + 1);
+                    firstEnd.setDate(0);
+                    daysAccrued = Math.max(0, Math.floor((firstEnd - startDate) / (1000 * 3600 * 24)) + 1);
+                } else {
+                    daysAccrued = daysInPrevMonth;
+                }
+
+                const interest = balance * i * (daysAccrued / daysInPrevMonth);
+                const principalPart = A - interest;
+                const commission = (P * 0.01) * (daysAccrued / daysInCurrMonth);
+                let totalPayment = A + commission;
+                let extraPrepayment = 0;
+                let prepayType = '';
+
+                while (prepayIndex < prepayments.length && prepayments[prepayIndex].date <= payDate) {
+                    extraPrepayment += prepayments[prepayIndex].amount;
+                    prepayType = prepayments[prepayIndex].type;
+                    prepayIndex++;
+                }
+
+                if (extraPrepayment > 0) {
+                    balance -= extraPrepayment;
+                    if (balance < 0) balance = 0;
+                    if (prepayType === 'payment') {
+                        const remainingPayments = nMonths - paymentNum;
+                        if (remainingPayments > 0) {
+                            A = balance * (i * Math.pow(1 + i, remainingPayments)) / (Math.pow(1 + i, remainingPayments) - 1);
+                        } else {
+                            A = balance + interest;
+                        }
+                    }
+                }
+
+                schedule.push({
+                    num: paymentNum,
+                    date: payDate.toLocaleDateString('ru-RU'),
+                    annuity: A,
+                    interest: interest,
+                    principal: principalPart,
+                    commission: commission,
+                    total: A + commission,
+                    balanceAfter: balance,
+                    prepayment: extraPrepayment,
+                    prepayType: prepayType
+                });
+
+                balance -= principalPart;
+                if (balance < 0) balance = 0;
+                paymentNum++;
+                currentDate.setMonth(currentDate.getMonth() + 1);
+            }
+
+            const totalInterest = schedule.reduce((sum, row) => sum + row.interest, 0);
+            const totalCommission = schedule.reduce((sum, row) => sum + row.commission, 0);
+            const totalPayments = schedule.reduce((sum, row) => sum + row.total, 0);
+            const totalPrepayments = schedule.reduce((sum, row) => sum + row.prepayment, 0);
+
+            const summaryData = [
+                ['Сумма кредита', formatMoney(P)],
+                ['Годовая ставка', (rAnnual * 100).toFixed(2) + '%'],
+                ['Срок (месяцев)', nMonths],
+                ['Аннуитетный платёж (базовый)', formatMoney(A)],
+                ['Общая сумма выплат', formatMoney(totalPayments)],
+                ['Переплата (проценты + комиссия)', formatMoney(totalInterest + totalCommission)],
+                ['Проценты всего', formatMoney(totalInterest)],
+                ['Комиссия всего', formatMoney(totalCommission)],
+                ['Досрочно погашено', formatMoney(totalPrepayments)],
+                ['Фактический срок (платежей)', schedule.length]
+            ];
+
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.style.display = 'block';
+
+            const summaryBody = document.getElementById('summaryBody');
+            summaryBody.innerHTML = '';
+            summaryData.forEach(row => {
+                const tr = document.createElement('tr');
+                row.forEach(cell => {
+                    const td = document.createElement('td');
+                    td.textContent = cell;
+                    tr.appendChild(td);
+                });
+                summaryBody.appendChild(tr);
+            });
+
+            const scheduleBody = document.getElementById('scheduleBody');
+            scheduleBody.innerHTML = '';
+            schedule.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.num}</td>
+                    <td>${row.date}</td>
+                    <td>${formatMoney(row.annuity)}</td>
+                    <td>${formatMoney(row.interest)}</td>
+                    <td>${formatMoney(row.principal)}</td>
+                    <td>${formatMoney(row.commission)}</td>
+                    <td class="total-row">${formatMoney(row.total)}</td>
+                    <td>${formatMoney(row.balanceAfter)}</td>
+                    <td>${formatMoney(row.prepayment)}</td>
+                    <td>${row.prepayType === 'term' ? 'Уменьшить срок' : 'Уменьшить платёж'}</td>
+                `;
+                scheduleBody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>
