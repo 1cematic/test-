@@ -1,0 +1,423 @@
+import tkinter as tk
+from tkinter import ttk, messagebox
+import calendar
+from datetime import date, timedelta
+
+# Простой календарь-диалог (упрощённая версия, без внешних зависимостей)
+class DatePickerDialog:
+    def __init__(self, parent, initial_date=None):
+        self.top = tk.Toplevel(parent)
+        self.top.transient(parent)
+        self.top.grab_set()
+        self.top.title("Выберите дату")
+        self.top.geometry("300x320")
+
+        if initial_date is None:
+            initial_date = date.today()
+
+        self.year = initial_date.year
+        self.month = initial_date.month
+        self.selected_date = initial_date
+
+        self.create_widgets()
+        self.update_calendar()
+
+    def create_widgets(self):
+        # Управление годом/месяцем
+        ctrl_frame = ttk.Frame(self.top)
+        ctrl_frame.pack(fill="x", padx=10, pady=5)
+
+        ttk.Button(ctrl_frame, text="<", width=3, command=self.prev_year).pack(side="left")
+        self.lbl_year = ttk.Label(ctrl_frame, text=str(self.year), font=("Arial", 11, "bold"))
+        self.lbl_year.pack(side="left", padx=8)
+        ttk.Button(ctrl_frame, text=">", width=3, command=self.next_year).pack(side="left")
+
+        ttk.Separator(ctrl_frame, orient="vertical").pack(side="left", fill="y", padx=15, pady=2)
+
+        ttk.Button(ctrl_frame, text="<<", width=3, command=self.prev_month).pack(side="left")
+        self.lbl_month = ttk.Label(ctrl_frame, text=calendar.month_name[self.month], font=("Arial", 11))
+        self.lbl_month.pack(side="left", padx=8)
+        ttk.Button(ctrl_frame, text=">>", width=3, command=self.next_month).pack(side="left")
+
+        # Календарь (сетка)
+        cal_frame = ttk.Frame(self.top)
+        cal_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        days = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"]
+        for i, d in enumerate(days):
+    
+        ttk.Label(cal_frame, text=d, font=("Arial", 9, "bold"), anchor="center").grid(row=0, column=i, padx=2, pady=4)
+self.day_buttons = []
+for r in range(1, 7):
+        for c in range(7):
+            btn = tk.Button(cal_frame, text="", width=4, height=1, relief="flat", bg="#f5f5f5",
+                            command=lambda r=r, c=c: self.on_day_click(r, c))
+            btn.grid(row=r, column=c, padx=2, pady=2)
+            self.day_buttons.append(btn)
+        # Кнопка ОК
+        ok_frame = ttk.Frame(self.top)
+        ok_frame.pack(pady=10)
+        ttk.Button(ok_frame, text="OK", command=self.on_ok).pack()
+
+def update_calendar(self):
+        first_weekday, days_in_month = calendar.monthrange(self.year, self.month)
+        # Пн=0 … Вс=6 (как в нашем заголовке)
+        start_col = first_weekday  # в calendar.monthrange Пн=0
+
+        for btn in self.day_buttons:
+            btn.config(text="", bg="#f5f5f5", fg="black", state="normal")
+
+        day_idx = 1
+        for row in range(1, 5):
+            for col in range(7):
+                if day_idx > days_in_month:
+                    break
+                if (row - 1) * 7 + col >= start_col:
+                    btn = self.day_buttons[(row - 1) * 7 + col]
+                    btn.config(text=str(day_idx))
+                    # Подсветка выбранной даты
+                    if (self.year == self.selected_date.year and
+                        self.month == self.selected_date.month and
+                        day_idx == self.selected_date.day):
+                        btn.config(bg="#2563eb", fg="white")
+                    day_idx += 1
+            if day_idx > days_in_month:
+                break
+
+        self.lbl_year.config(text=str(self.year))
+        self.lbl_month.config(text=calendar.month_name[self.month])
+
+def prev_year(self):
+        self.year -= 1
+        self.update_calendar()
+
+def next_year(self):
+        self.year += 1
+        self.update_calendar()
+
+def prev_month(self):
+        self.month -= 1
+        if self.month < 1:
+            self.month = 12
+            self.year -= 1
+        self.update_calendar()
+
+def next_month(self):
+        self.month += 1
+        if self.month > 12:
+            self.month = 1
+            self.year += 1
+        self.update_calendar()
+
+def on_day_click(self, row, col):
+        idx = (row - 1) * 7 + col
+        btn = self.day_buttons[idx]
+        text = btn.cget("text")
+        if not text:
+            return
+        day = int(text)
+        self.selected_date = date(self.year, self.month, day)
+        self.update_calendar()
+
+def on_ok(self):
+        self.top.destroy()
+
+def get_days_in_month(year, month):
+    return calendar.monthrange(year, month)[1]
+
+def format_money(value):
+    return f"{value:,.2f} ₽"
+
+def calculate_schedule(principal, rate_annual, months, start_date, prepayments):
+    i = rate_annual / 100 / 12
+    A = principal * (i * (1 + i) ** months) / ((1 + i) ** months - 1)
+
+    balance = principal
+    current_date = start_date
+    payment_num = 1
+    prepay_index = 0
+    schedule = []
+
+    prepayments_sorted = sorted(prepayments, key=lambda x: x['date'])
+
+    while balance > 0.001 and payment_num <= months * 2:
+        pay_date = date(current_date.year, current_date.month, 1)
+        days_in_curr_month = get_days_in_month(pay_date.year, pay_date.month)
+        prev_month = pay_date.replace(day=1) - timedelta(days=1)
+        days_in_prev_month = get_days_in_month(prev_month.year, prev_month.month)
+
+        if payment_num == 1:
+            first_end = date(pay_date.year, pay_date.month, days_in_curr_month)
+            days_accrued = max(0, (first_end - start_date).days + 1)
+        else:
+            days_accrued = days_in_prev_month
+
+        interest = balance * i * (days_accrued / days_in_prev_month)
+        principal_part = A - interest
+        commission = (principal * 0.01) * (days_accrued / days_in_curr_month)
+        total_payment = A + commission
+
+        extra_prepayment = 0.0
+        prepay_type = ''
+
+        while prepay_index < len(prepayments_sorted) and prepayments_sorted[prepay_index]['date'] <= pay_date:
+            extra_prepayment += prepayments_sorted[prepay_index]['amount']
+            prepay_type = prepayments_sorted[prepay_index]['type']
+            prepay_index += 1
+
+        if extra_prepayment > 0:
+            balance -= extra_prepayment
+            
+            if balance < 0:
+                balance = 0.0
+            
+            if prepay_type == 'payment':
+                remaining_payments = months - payment_num
+                if remaining_payments > 0 and balance > 0.001:
+                    A = balance * (i * (1 + i) ** remaining_payments) / ((1 + i) ** remaining_payments - 1)
+                else:
+                    A = balance + interest
+
+        schedule.append({
+            'num': payment_num,
+            'date': pay_date,
+            'annuity': A,
+            'interest': interest,
+            'principal_part': principal_part,
+            'commission': commission,
+            'total': A + commission,
+            'balance_after': balance,
+            'prepayment': extra_prepayment,
+            'prepay_type': prepay_type
+        })
+
+        balance -= principal_part
+        if balance < 0:
+            balance = 0.0
+
+        payment_num += 1
+        next_year = current_date.year + (current_date.month // 12)
+        next_month = current_date.month % 12 + 1
+        current_date = date(next_year, next_month, 1)
+
+    return schedule, A
+
+class CreditCalculatorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Кредитный калькулятор (Tkinter + календарь)")
+        self.root.geometry("1120x720")
+
+        self.prepayment_frames = []
+        self.create_widgets()
+
+    def create_widgets(self):
+        # --- Основные параметры ---
+        main_frame = ttk.LabelFrame(self.root, text="Основные параметры кредита", padding=15)
+        main_frame.pack(fill="x", padx=10, pady=5)
+
+        ttk.Label(main_frame, text="Сумма кредита, руб.:").grid(row=0, column=0, sticky="w", pady=5)
+        self.entry_principal = ttk.Entry(main_frame, width=20)
+        self.entry_principal.grid(row=0, column=1, padx=5, pady=5)
+
+        ttk.Label(main_frame, text="Годовая ставка, %:").grid(row=0, column=2, sticky="w", pady=5)
+        self.entry_rate = ttk.Entry(main_frame, width=10)
+        self.entry_rate.grid(row=0, column=3, padx=5, pady=5)
+
+        ttk.Label(main_frame, text="Срок, месяцев:").grid(row=0, column=4, sticky="w", pady=5)
+        self.entry_months = ttk.Entry(main_frame, width=10)
+        self.entry_months.grid(row=0, column=5, padx=5, pady=5)
+
+        ttk.Label(main_frame, text="Дата выдачи:").grid(row=0, column=6, sticky="w", pady=5)
+        self.entry_start = ttk.Entry(main_frame, width=12, state="readonly")
+        self.entry_start.grid(row=0, column=7, padx=4, pady=5)
+        self.entry_start.insert(0, date.today().strftime("%Y-%m-%d"))
+        btn_pick_start = ttk.Button(main_frame, text="📅", width=4, command=self.pick_start_date)
+        btn_pick_start.grid(row=0, column=8, padx=2, pady=5)
+
+        # --- Досрочные погашения ---
+        pp_frame = ttk.LabelFrame(self.root, text="Досрочные погашения", padding=15)
+        pp_frame.pack(fill="x", padx=10, pady=5)
+
+        self.pp_container = ttk.Frame(pp_frame)
+        self.pp_container.pack(fill="both", expand=True)
+
+        btn_add = ttk.Button(pp_frame, text="+ Добавить досрочное погашение", command=self.add_prepayment)
+        btn_add.pack(anchor="w", pady=5)
+
+        # Кнопка расчёта
+        calc_btn = ttk.Button(self.root, text="Рассчитать", command=self.run_calculation)
+        calc_btn.pack(pady=10)
+
+        # Результаты
+        res_frame = ttk.LabelFrame(self.root, text="Результаты", padding=10)
+        res_frame.pack(fill="both", expand=True, padx=10, pady=5)
+
+        self.summary_label = ttk.Label(res_frame, text="", font=("Arial", 11, "bold"), wraplength=1000)
+        self.summary_label.pack(anchor="w")
+
+        cols = ("№", "Дата", "Аннуитет", "Проценты", "Основной долг", "Комиссия", "Итого", "Остаток", "Досрочно", "Тип")
+        self.tree = ttk.Treeview(res_frame, columns=cols, show="headings", height=12)
+        for col in cols:
+            self.tree.heading(col, text=col)
+            self.tree.column(col, width=80, anchor="center")
+        self.tree.column("Дата", width=90, anchor="w")
+        self.tree.column("Аннуитет", width=100, anchor="e")
+        self.tree.column("Проценты", width=100, anchor="e")
+        self.tree.column("Основной долг", width=110, anchor="e")
+        self.tree.column("Комиссия", width=90, anchor="e")
+        self.tree.column("Итого", width=100, anchor="e")
+        self.tree.column("Остаток", width=100, anchor="e")
+        self.tree.column("Досрочно", width=90, anchor="e")
+        self.tree.pack(fill="both", expand=True, pady=10)
+
+        scrollbar = ttk.Scrollbar(res_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+
+    def pick_start_date(self):
+        initial = date.fromisoformat(self.entry_start.get())
+        dialog = DatePickerDialog(self.root, initial)
+        self.root.wait_window(dialog.top)
+        if hasattr(dialog, "selected_date"):
+            self.entry_start.config(state="normal")
+            self.entry_start.delete(0, tk.END)
+            self.entry_start.insert(0, dialog.selected_date.strftime("%Y-%m-%d"))
+            self.entry_start.config(state="readonly")
+            
+
+    def add_prepayment(self):
+        frame = ttk.Frame(self.pp_container)
+        frame.pack(fill="x", pady=4)
+
+        ttk.Label(frame, text="Дата:").pack(side="left", padx=4)
+        entry_date = ttk.Entry(frame, width=12, state="readonly")
+        entry_date.pack(side="left", padx=4)
+        entry_date.insert(0, date.today().strftime("%Y-%m-%d"))
+
+        btn_pick = ttk.Button(
+            frame,
+            text="📅",
+            width=4,
+            command=lambda e=entry_date: self.pick_prepay_date(e)
+        )
+        btn_pick.pack(side="left", padx=2, pady=2)
+
+        ttk.Label(frame, text="Сумма, руб.:").pack(side="left", padx=4)
+        entry_amount = ttk.Entry(frame, width=10)
+        entry_amount.pack(side="left", padx=4)
+
+        ttk.Label(frame, text="Тип:").pack(side="left", padx=4)
+        combo_type = ttk.Combobox(
+            frame,
+            values=["Уменьшить срок", "Уменьшить платёж"],
+            state="readonly",
+            width=15
+        )
+        combo_type.current(0)
+        combo_type.pack(side="left", padx=4)
+
+        btn_remove = ttk.Button(
+            frame,
+            text="×",
+            width=2,
+            command=lambda f=frame: self.remove_prepayment(f)
+        )
+        btn_remove.pack(side="left", padx=4)
+
+        self.prepayment_frames.append({
+            "frame": frame,
+            "date": entry_date,
+            "amount": entry_amount,
+            "type": combo_type
+        })
+
+    def remove_prepayment(self, frame):
+        frame.destroy()
+        self.prepayment_frames = [
+            p for p in self.prepayment_frames if p["frame"] != frame
+        ]
+
+    def pick_prepay_date(self, entry):
+        initial = date.fromisoformat(entry.get())
+        dialog = DatePickerDialog(self.root, initial)
+        self.root.wait_window(dialog.top)
+
+        if hasattr(dialog, "selected_date"):
+            entry.config(state="normal")
+            entry.delete(0, tk.END)
+            entry.insert(0, dialog.selected_date.strftime("%Y-%m-%d"))
+            entry.config(state="readonly")
+
+    def run_calculation(self):
+        try:
+            principal = float(self.entry_principal.get())
+            rate_annual = float(self.entry_rate.get())
+            months = int(self.entry_months.get())
+            start_date = date.fromisoformat(self.entry_start.get())
+        except Exception:
+            messagebox.showerror("Ошибка", "Проверьте основные параметры: все поля должны быть заполнены корректно.")
+            return
+
+        prepayments = []
+        for p in self.prepayment_frames:
+            try:
+                amount = float(p["amount"].get())
+                if amount <= 0:
+                    continue
+                prepayments.append({
+                    "date": date.fromisoformat(p["date"].get()),
+                    "amount": amount,
+                    "type": "term" if p["type"].get() == "Уменьшить срок" else "payment"
+                })
+            except Exception:
+                continue
+
+        schedule, A = calculate_schedule(principal, rate_annual, months, start_date, prepayments)
+        if not schedule:
+            messagebox.showwarning("Внимание", "График пуст — проверьте параметры.")
+            return
+
+        total_interest = sum(r["interest"] for r in schedule)
+        total_commission = sum(r["commission"] for r in schedule)
+        total_payments = sum(r["total"] for r in schedule)
+        total_prepayments = sum(p["amount"] for p in prepayments)
+
+        summary_text = (
+            f"Сумма кредита: {format_money(principal)}\n"
+            f"Годовая ставка: {rate_annual}%\n"
+            f"Аннуитетный платёж (начальный): {format_money(A)}\n"
+            f"Общая сумма выплат: {format_money(total_payments)}\n"
+            f"Переплата (проценты + комиссия): {format_money(total_interest + total_commission)}\n"
+            f"Проценты всего: {format_money(total_interest)}\n"
+            f"Комиссия всего: {format_money(total_commission)}\n"
+            f"Досрочно погашено: {format_money(total_prepayments)}\n"
+            f"Фактический срок (платежей): {len(schedule)}"
+        )
+        self.summary_label.config(text=summary_text)
+
+        # Очистка таблицы
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Заполнение таблицы
+        for row in schedule:
+            values = (
+                row["num"],
+                row["date"].strftime("%d.%m.%Y"),
+                format_money(row["annuity"]),
+                format_money(row["interest"]),
+                format_money(row["principal_part"]),
+                format_money(row["commission"]),
+                format_money(row["total"]),
+                format_money(row["balance_after"]),
+                format_money(row["prepayment"]),
+                row["prepay_type"]
+            )
+            self.tree.insert("", "end", values=values)
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = CreditCalculatorApp(root)
+    root.mainloop()
+
